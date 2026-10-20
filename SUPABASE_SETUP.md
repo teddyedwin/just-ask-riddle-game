@@ -1,18 +1,24 @@
-# Shared leaderboard setup
+# Shared guest leaderboard setup
 
-The app uses Supabase Auth for email magic links, a public read-only leaderboard, and a server-side game function that checks answers and records scores. This prevents the browser from directly submitting arbitrary score values, but a public quiz cannot be made completely cheat-proof. Old browser-only accounts and scores are not migrated.
+The app lets anyone play with a guest display name. Supabase stores game sessions and scores, and the Edge Function checks answers and writes completed scores. The browser cannot submit score values directly, but without accounts, names are unverified and people can replay, impersonate names, or abuse the public game service. Do not use this leaderboard for prizes or other high-stakes decisions.
 
-## 1. Create the Supabase project
+## Supabase project
 
-The Supabase project `jyeukrrfhesgjqilymwm` is connected in `supabase-config.js`. Its project URL and publishable key are browser-safe. Never put the `service_role` key in a website file or share it publicly.
+The Supabase project `jyeukrrfhesgjqilymwm` is configured in `supabase-config.js`. The project URL and publishable key are safe to include in the public site. Never put the `service_role` key in a website file or share it publicly.
 
-## 2. Create the database tables and policies
+## Apply the database setup
 
-The contents of `supabase-setup.sql` have been applied in the project SQL Editor. The public leaderboard query (including the player-name join) was verified against the live project. The policies allow public reads of leaderboard names and scores, but only the game function can write scores. Each user can update only their own public display name.
+Run the current `supabase-setup.sql` in the Supabase SQL Editor. It migrates the existing authenticated schema, preserves old scores by copying their display names, and allows new scores and sessions to use guest names. It can be run again safely.
 
-## 3. Deploy the game function
+The `scores` table is publicly readable but only the server-side game function can insert scores. Game session rows are not directly accessible to website visitors.
 
-The `riddle-game` Edge Function has been deployed from the Supabase dashboard. For future code updates, install the Supabase CLI, log in, link the project, then deploy from the project folder:
+## Deploy the game function
+
+Deploy the updated `supabase/functions/riddle-game/index.ts` as the `riddle-game` Edge Function. The function uses the Supabase `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` server-side secrets. Do not place the service-role key in the site.
+
+JWT verification at the Edge gateway must remain disabled for this function (`verify_jwt = false` in `supabase/config.toml`), because guest players do not sign in. The function still validates each request, validates display names, stores answers server-side, and records a score only after all answers are correct. Keep the one-second answer pacing and two-hour session expiry.
+
+For command-line deployment, install the Supabase CLI, log in, link the project, then deploy from the project folder:
 
 ```text
 supabase login
@@ -20,14 +26,6 @@ supabase link --project-ref jyeukrrfhesgjqilymwm
 supabase functions deploy riddle-game
 ```
 
-The repository includes `supabase/config.toml`. JWT verification at the Edge gateway is disabled because the function validates each bearer token itself using Supabase Auth; keep the handler's authentication check in place.
+## Publish and test
 
-The function uses Supabase's `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` server-side secrets. Do not add the service-role key to `supabase-config.js`.
-
-## 4. Configure email sign-in and site URLs
-
-Email sign-in and new-user registration are enabled. Email confirmation is on. **Authentication → URL Configuration** uses `https://teddyedwin.github.io/just-ask-riddle-game/` as the Site URL and allows both that Pages path (`https://teddyedwin.github.io/just-ask-riddle-game/**`) and `http://localhost:3000/**` for local testing. Public signups require a custom SMTP provider for reliable email delivery; configure one under **Project Settings → Auth → SMTP Settings** before inviting general users.
-
-## 5. Publish and test
-
-The site is published at [https://teddyedwin.github.io/just-ask-riddle-game/](https://teddyedwin.github.io/just-ask-riddle-game/). The database's public score read endpoint was verified, and the deployed game function correctly rejects requests without a signed-in user. Configure custom SMTP before inviting general users. Then test opening a magic link, completing a game, changing a display name, and viewing the leaderboard in a separate browser. Only scores inserted by the deployed game function are visible; old local scores remain in the browser and are not shared.
+The site is published at [https://teddyedwin.github.io/just-ask-riddle-game/](https://teddyedwin.github.io/just-ask-riddle-game/). Publish the updated site files and function, then test starting a guest game, completing all answers, and checking that the score appears on the shared [leaderboard](https://teddyedwin.github.io/just-ask-riddle-game/leaderboard.html). Previous authenticated scores remain visible with their existing profile names.

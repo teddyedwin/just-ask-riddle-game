@@ -6,18 +6,26 @@ create table if not exists public.profiles (
 
 create table if not exists public.scores (
   id bigint generated always as identity primary key,
-  user_id uuid not null references public.profiles (user_id) on delete cascade,
+  user_id uuid references public.profiles (user_id) on delete set null,
+  player_name text not null check (char_length(trim(player_name)) between 1 and 40),
   difficulty text not null check (difficulty in ('easy', 'medium', 'hard')),
   score integer not null check (score > 0),
   completed_at timestamptz not null default now()
 );
 
-create index if not exists scores_leaderboard_order_idx
-  on public.scores (score desc, completed_at asc);
+alter table public.scores alter column user_id drop not null;
+alter table public.scores add column if not exists player_name text;
+update public.scores s
+  set player_name = coalesce(p.display_name, 'Player')
+  from public.profiles p
+  where s.user_id = p.user_id and s.player_name is null;
+update public.scores set player_name = 'Player' where player_name is null;
+alter table public.scores alter column player_name set not null;
 
 create table if not exists public.riddle_game_sessions (
   id uuid primary key,
-  user_id uuid not null references auth.users (id) on delete cascade,
+  user_id uuid references auth.users (id) on delete set null,
+  player_name text not null check (char_length(trim(player_name)) between 1 and 40),
   difficulty text not null check (difficulty in ('easy', 'medium', 'hard')),
   questions jsonb not null,
   current_index integer not null default 0 check (current_index >= 0),
@@ -25,6 +33,18 @@ create table if not exists public.riddle_game_sessions (
   created_at timestamptz not null default now(),
   completed_at timestamptz
 );
+
+alter table public.riddle_game_sessions alter column user_id drop not null;
+alter table public.riddle_game_sessions add column if not exists player_name text;
+update public.riddle_game_sessions s
+  set player_name = coalesce(p.display_name, 'Player')
+  from public.profiles p
+  where s.user_id = p.user_id and s.player_name is null;
+update public.riddle_game_sessions set player_name = 'Player' where player_name is null;
+alter table public.riddle_game_sessions alter column player_name set not null;
+
+create index if not exists scores_leaderboard_order_idx
+  on public.scores (score desc, completed_at asc);
 
 create or replace function public.create_player_profile()
 returns trigger
@@ -87,9 +107,11 @@ grant select on public.profiles, public.scores to anon, authenticated;
 grant insert, update on public.profiles to authenticated;
 revoke all on function public.create_player_profile() from public, anon, authenticated;
 
-create or replace function public.submit_riddle_answer(
+drop function if exists public.submit_riddle_answer(uuid, uuid, text);
+drop function if exists public.submit_riddle_answer(uuid, text);
+
+create function public.submit_riddle_answer(
   p_game_id uuid,
-  p_user_id uuid,
   p_answer text
 )
 returns jsonb
@@ -108,7 +130,6 @@ begin
     into game
     from public.riddle_game_sessions
     where id = p_game_id
-      and user_id = p_user_id
     for update;
 
   if not found or game.completed_at is not null
@@ -144,8 +165,8 @@ begin
         when 'hard' then 30
       end;
 
-    insert into public.scores (user_id, difficulty, score)
-      values (p_user_id, game.difficulty, final_score);
+    insert into public.scores (user_id, player_name, difficulty, score)
+      values (null, game.player_name, game.difficulty, final_score);
 
     update public.riddle_game_sessions
       set completed_at = now()
@@ -170,5 +191,5 @@ begin
 end;
 $$;
 
-revoke all on function public.submit_riddle_answer(uuid, uuid, text) from public, anon, authenticated;
-grant execute on function public.submit_riddle_answer(uuid, uuid, text) to service_role;
+revoke all on function public.submit_riddle_answer(uuid, text) from public, anon, authenticated;
+grant execute on function public.submit_riddle_answer(uuid, text) to service_role;

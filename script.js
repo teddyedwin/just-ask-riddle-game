@@ -4,7 +4,6 @@ const answerOptions = document.getElementById('answerOptions');
 const restartButton = document.getElementById('restartButton');
 const nameForm = document.getElementById('nameForm');
 const nameInput = document.getElementById('nameInput');
-const emailInput = document.getElementById('emailInput');
 const loginStatus = document.getElementById('loginStatus');
 const loginPanel = document.getElementById('loginPanel');
 const quizPanel = document.getElementById('quizPanel');
@@ -31,7 +30,6 @@ const slideIndicators = [...document.querySelectorAll('.slide-indicator')];
 const difficultySelect = document.getElementById('difficultySelect');
 const supabaseClient = window.riddleSupabase;
 let playerName = '';
-let currentUser = null;
 let activeGameId = null;
 let currentQuestion = null;
 let gameRequestId = 0;
@@ -130,7 +128,7 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-profileForm.addEventListener('submit', async (event) => {
+profileForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const updatedName = profileNameInput.value.trim();
   const updatedYear = profileYearInput.value.trim();
@@ -145,17 +143,7 @@ profileForm.addEventListener('submit', async (event) => {
     return;
   }
 
-  if (!supabaseClient || !currentUser) {
-    profileStatus.textContent = 'Sign in to update your public display name.';
-    return;
-  }
-
   try {
-    const { error } = await supabaseClient
-      .from('profiles')
-      .update({ display_name: updatedName })
-      .eq('user_id', currentUser.id);
-    if (error) throw error;
     if (updatedYear) {
       localStorage.setItem(playerYearStorageKey, updatedYear);
     } else {
@@ -163,7 +151,7 @@ profileForm.addEventListener('submit', async (event) => {
     }
     playerName = updatedName;
     setHeaderGreeting();
-    profileStatus.textContent = 'Profile saved. Your leaderboard name is updated.';
+    profileStatus.textContent = 'Name saved for future games. Current and past scores keep their original name.';
   } catch (error) {
     console.error('Could not save profile changes.', error);
     profileStatus.textContent = 'Profile could not be saved. Please try again.';
@@ -177,7 +165,7 @@ async function invokeGame(payload) {
 }
 
 async function startOnlineGame() {
-  if (!supabaseClient || !currentUser) return;
+  if (!supabaseClient || !playerName) return false;
 
   const requestId = ++gameRequestId;
   activeGameId = null;
@@ -187,122 +175,60 @@ async function startOnlineGame() {
   answerOptions.hidden = false;
   answerOptions.replaceChildren();
   prompt.classList.remove('answer-correct', 'answer-wrong');
-  prompt.textContent = 'Starting a verified game...';
+  prompt.textContent = 'Starting your game...';
   try {
-    const result = await invokeGame({ action: 'start', difficulty: selectedDifficulty });
+    const result = await invokeGame({
+      action: 'start',
+      difficulty: selectedDifficulty,
+      playerName,
+    });
     if (requestId !== gameRequestId) return;
     activeGameId = result.gameId;
     currentQuestion = result.question;
     showQuestion();
+    return true;
   } catch (error) {
-    if (requestId !== gameRequestId) return;
-    console.error('Could not start a verified game.', error);
+    if (requestId !== gameRequestId) return false;
+    console.error('Could not start the guest game.', error);
     prompt.textContent = 'Could not start the game. Please try again.';
     prompt.classList.add('answer-wrong');
+    return false;
   }
-}
-
-async function handleAuthenticatedUser(user) {
-  if (!user) {
-    gameRequestId += 1;
-    currentUser = null;
-    activeGameId = null;
-    currentQuestion = null;
-    playerName = '';
-    loginPanel.hidden = false;
-    quizPanel.hidden = true;
-    logoutButton.hidden = true;
-    headerNote.hidden = false;
-    headerNote.replaceChildren(
-      headerNote.querySelector('.status-dot'),
-      document.createTextNode(' A little question game')
-    );
-    return;
-  }
-  if (currentUser && currentUser.id === user.id) return;
-
-  try {
-    let { data: profile, error } = await supabaseClient
-      .from('profiles')
-      .select('display_name')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (error) throw error;
-
-    if (!profile) {
-      const displayName = String(
-        user.user_metadata.display_name || user.email?.split('@')[0] || 'Player'
-      ).trim().slice(0, 40);
-      const result = await supabaseClient
-        .from('profiles')
-        .upsert({ user_id: user.id, display_name: displayName }, { onConflict: 'user_id' })
-        .select('display_name')
-        .single();
-      if (result.error) throw result.error;
-      profile = result.data;
-    }
-
-    currentUser = user;
-    playerName = profile.display_name;
-    setHeaderGreeting();
-    headerNote.hidden = false;
-    loginPanel.hidden = true;
-    quizPanel.hidden = false;
-    logoutButton.hidden = false;
-    await startOnlineGame();
-  } catch (error) {
-    console.error('Could not load the signed-in player profile.', error);
-    loginStatus.textContent = 'Signed in, but the player profile could not be loaded. Please try again.';
-  }
-}
-
-async function initializeOnlineSignIn() {
-  if (!supabaseClient) {
-    loginStatus.textContent = 'Online sign-in is not configured yet. Complete the Supabase setup to enable accounts and shared scores.';
-    return;
-  }
-
-  const { data, error } = await supabaseClient.auth.getSession();
-  if (error) {
-    console.error('Could not restore the online sign-in session.', error);
-    loginStatus.textContent = 'Could not check your sign-in session. Please reload the page.';
-    return;
-  }
-  await handleAuthenticatedUser(data.session?.user || null);
-  supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (event === 'INITIAL_SESSION') return;
-    window.setTimeout(() => {
-      void handleAuthenticatedUser(session?.user || null);
-    }, 0);
-  });
 }
 
 nameForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const displayName = nameInput.value.trim();
-  const email = emailInput.value.trim();
-  if (!displayName || !email) return;
+  const displayName = nameInput.value.trim().slice(0, 40);
+  if (!displayName) {
+    nameInput.focus();
+    return;
+  }
   if (!supabaseClient) {
-    loginStatus.textContent = 'Online sign-in is not configured yet. Complete the Supabase setup first.';
+    loginStatus.textContent = 'The shared game service is not available. Please try again later.';
     return;
   }
 
   const submitButton = nameForm.querySelector('button[type="submit"]');
   submitButton.disabled = true;
-  loginStatus.textContent = 'Sending your sign-in link...';
+  playerName = displayName;
+  loginStatus.textContent = 'Starting your game...';
   try {
-    const { error } = await supabaseClient.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
-        data: { display_name: displayName },
-      },
-    });
-    if (error) throw error;
-    loginStatus.textContent = 'Check your email for the sign-in link. Your display name and scores will be public.';
+    setHeaderGreeting();
+    headerNote.hidden = false;
+    loginPanel.hidden = true;
+    quizPanel.hidden = false;
+    logoutButton.hidden = false;
+    const started = await startOnlineGame();
+    if (!started) {
+      loginPanel.hidden = false;
+      quizPanel.hidden = true;
+      logoutButton.hidden = true;
+      loginStatus.textContent = 'Could not connect to the shared game service. Please try again later.';
+      nameInput.focus();
+    }
   } catch (error) {
-    console.error('Could not send the email sign-in link.', error);
-    loginStatus.textContent = 'Could not send a sign-in link. Check the email address and Supabase email settings.';
+    console.error('Could not start a guest game.', error);
+    loginStatus.textContent = 'Could not start the game. Please try again.';
   } finally {
     submitButton.disabled = false;
   }
@@ -469,33 +395,35 @@ restartButton.addEventListener('click', () => {
 if (difficultySelect) {
   difficultySelect.addEventListener('change', () => {
     selectedDifficulty = difficultySelect.value;
-    if (currentUser) void startOnlineGame();
+    if (playerName) void startOnlineGame();
   });
 }
 
-logoutButton.addEventListener('click', async () => {
-  if (!supabaseClient) return;
-  logoutButton.disabled = true;
-  try {
-    const { error } = await supabaseClient.auth.signOut();
-    if (error) throw error;
-    handleAuthenticatedUser(null);
-    profileStatus.textContent = '';
-    profileDrawerName.textContent = '';
-    profileNameInput.value = '';
-    profileYearInput.value = '';
-    dismissProfileDrawer();
-    profileAvatar.textContent = '?';
-    profileAvatar.setAttribute('aria-label', 'Player profile');
-    nameInput.focus();
-  } catch (error) {
-    console.error('Could not sign out.', error);
-    prompt.textContent = 'Could not sign out. Please try again.';
-    prompt.classList.add('answer-wrong');
-  } finally {
-    logoutButton.disabled = false;
-  }
+logoutButton.addEventListener('click', () => {
+  gameRequestId += 1;
+  playerName = '';
+  activeGameId = null;
+  currentQuestion = null;
+  profileStatus.textContent = '';
+  profileDrawerName.textContent = '';
+  profileNameInput.value = '';
+  profileYearInput.value = '';
+  dismissProfileDrawer();
+  profileAvatar.textContent = '?';
+  profileAvatar.setAttribute('aria-label', 'Open profile menu');
+  loginPanel.hidden = false;
+  quizPanel.hidden = true;
+  logoutButton.hidden = true;
+  answerOptions.hidden = false;
+  restartButton.hidden = true;
+  headerNote.replaceChildren(
+    headerNote.querySelector('.status-dot'),
+    document.createTextNode(' A little question game')
+  );
+  headerNote.hidden = false;
+  loginStatus.textContent = 'No account needed. Names and scores are public and can’t be verified.';
+  nameInput.value = '';
+  nameInput.focus();
 });
 
-initializeOnlineSignIn();
 showQuestion();

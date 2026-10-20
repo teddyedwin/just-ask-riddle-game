@@ -19,7 +19,7 @@ async function loadLeaderboard() {
   try {
     const { data: results, error } = await supabaseClient
       .from('scores')
-      .select('score,difficulty,completed_at,profiles(display_name)')
+      .select('player_name,score,difficulty,completed_at')
       .order('score', { ascending: false })
       .order('completed_at', { ascending: true })
       .limit(50);
@@ -35,7 +35,7 @@ async function loadLeaderboard() {
       const row = document.createElement('tr');
       row.append(
         createCell(String(index + 1), 'leaderboard-rank'),
-        createCell(result.profiles.display_name),
+        createCell(result.player_name),
         createCell(result.difficulty.charAt(0).toUpperCase() + result.difficulty.slice(1)),
         createCell(String(result.score), 'leaderboard-score'),
         createCell(new Date(result.completed_at).toLocaleDateString())
