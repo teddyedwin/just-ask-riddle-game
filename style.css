@@ -971,6 +971,7 @@ h1 {
 
   .site-header {
     min-height: 76px;
+    gap: 10px;
   }
 
   .photo-slide {
@@ -1031,7 +1032,7 @@ h1 {
   }
 
   .question-content {
-    padding: 50px 0 38px;
+    padding: 36px 0 28px;
   }
 
   h1 {
@@ -1039,6 +1040,8 @@ h1 {
   }
 
   .answer-options {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
     padding-bottom: 24px;
   }
 
@@ -1047,8 +1050,8 @@ h1 {
     padding: 0 15px;
   }
 
-  .answer-options {
-    gap: 9px;
+  .answer-choice {
+    min-height: 54px;
   }
 
   .name-form {
@@ -1074,14 +1077,31 @@ h1 {
   }
 
   .leaderboard-panel {
-    padding: 28px 20px;
+    padding: 26px 16px;
     border-radius: 16px;
+  }
+
+  .leaderboard-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
   }
 
   .leaderboard-table th,
   .leaderboard-table td {
-    padding: 12px 10px;
+    padding: 11px 6px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
     font-size: 12px;
+  }
+
+  .leaderboard-table th:last-child,
+  .leaderboard-table td:last-child {
+    display: none;
   }
 
   .page-footer {
@@ -1094,6 +1114,27 @@ h1 {
 @media (max-width: 360px) {
   .page-shell {
     width: calc(100% - 28px);
+  }
+
+  .photo-slide {
+    height: 150px;
+  }
+
+  .question-panel {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .leaderboard-panel {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding-right: 4px;
+    padding-left: 4px;
+    font-size: 11px;
   }
 
   .page-footer {
