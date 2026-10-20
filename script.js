@@ -28,11 +28,86 @@ const slideImage = document.getElementById('slideImage');
 const photoCarousel = document.querySelector('.photo-carousel');
 const slideIndicators = [...document.querySelectorAll('.slide-indicator')];
 const difficultySelect = document.getElementById('difficultySelect');
+const soundToggle = document.getElementById('soundToggle');
 const supabaseClient = window.riddleSupabase;
 let playerName = '';
 let activeGameId = null;
 let currentQuestion = null;
 let gameRequestId = 0;
+const soundPreferenceKey = 'justAskSoundEnabled';
+let soundEnabled = true;
+let audioContext = null;
+
+try {
+  soundEnabled = localStorage.getItem(soundPreferenceKey) !== 'false';
+} catch (error) {
+  console.warn('Could not load the sound preference.', error);
+}
+
+function updateSoundToggle() {
+  soundToggle.textContent = soundEnabled ? 'Sound on' : 'Sound off';
+  soundToggle.setAttribute('aria-pressed', String(soundEnabled));
+  soundToggle.setAttribute('aria-label', `Sound ${soundEnabled ? 'on' : 'off'}`);
+}
+
+function prepareAudio() {
+  if (!soundEnabled || !window.AudioContext) return;
+  try {
+    if (!audioContext) audioContext = new AudioContext();
+    if (audioContext.state === 'suspended') {
+      void audioContext.resume().catch((error) => {
+        console.warn('Could not enable game sounds.', error);
+      });
+    }
+  } catch (error) {
+    console.warn('Game sounds are unavailable.', error);
+  }
+}
+
+function playTone(frequency, startTime, duration, endFrequency = frequency) {
+  if (!soundEnabled || !audioContext || audioContext.state !== 'running') return;
+  const oscillator = audioContext.createOscillator();
+  const volume = audioContext.createGain();
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+  if (endFrequency !== frequency) {
+    oscillator.frequency.exponentialRampToValueAtTime(endFrequency, startTime + duration);
+  }
+  volume.gain.setValueAtTime(0.0001, startTime);
+  volume.gain.exponentialRampToValueAtTime(0.065, startTime + 0.025);
+  volume.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  oscillator.connect(volume);
+  volume.connect(audioContext.destination);
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration);
+}
+
+function playSoundEffect(effect) {
+  if (!soundEnabled || !audioContext || audioContext.state !== 'running') return;
+  const now = audioContext.currentTime;
+  if (effect === 'incorrect') {
+    playTone(240, now, 0.18, 170);
+    return;
+  }
+  const notes = effect === 'complete'
+    ? [523.25, 659.25, 783.99, 1046.5]
+    : [659.25, 880];
+  notes.forEach((note, index) => {
+    playTone(note, now + index * (effect === 'complete' ? 0.12 : 0.09), 0.22);
+  });
+}
+
+updateSoundToggle();
+soundToggle.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  updateSoundToggle();
+  try {
+    localStorage.setItem(soundPreferenceKey, String(soundEnabled));
+  } catch (error) {
+    console.warn('Could not save the sound preference.', error);
+  }
+  if (soundEnabled) prepareAudio();
+});
 
 const slides = [
   {
@@ -342,6 +417,7 @@ function showQuestion() {
 
 async function checkAnswer(answer) {
   if (!activeGameId) return;
+  prepareAudio();
   answerOptions.querySelectorAll('button').forEach((button) => {
     button.disabled = true;
   });
@@ -353,6 +429,7 @@ async function checkAnswer(answer) {
       answer,
     });
     if (!result.correct) {
+      playSoundEffect('incorrect');
       prompt.textContent = `${playerName}, try again.`;
       prompt.classList.remove('answer-correct');
       prompt.classList.add('answer-wrong');
@@ -368,9 +445,11 @@ async function checkAnswer(answer) {
       restartButton.hidden = false;
       prompt.textContent = `${playerName}, you earned ${result.score} points!`;
       prompt.classList.add('answer-correct');
+      playSoundEffect('complete');
       return;
     }
 
+    playSoundEffect('correct');
     currentQuestion = result.question;
     showQuestion();
     prompt.textContent = `${playerName}, correct! Here comes the next riddle.`;
