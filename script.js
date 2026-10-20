@@ -37,6 +37,17 @@ let gameRequestId = 0;
 const soundPreferenceKey = 'justAskSoundEnabled';
 let soundEnabled = true;
 let audioContext = null;
+let musicGain = null;
+let musicOscillators = [];
+let musicChordTimer = null;
+let musicGeneration = 0;
+
+const ambientChords = [
+  [130.81, 164.81, 196, 246.94],
+  [110, 130.81, 164.81, 196],
+  [87.31, 110, 130.81, 164.81],
+  [98, 123.47, 146.83, 196],
+];
 
 try {
   soundEnabled = localStorage.getItem(soundPreferenceKey) !== 'false';
@@ -74,12 +85,86 @@ function playTone(frequency, startTime, duration, endFrequency = frequency) {
     oscillator.frequency.exponentialRampToValueAtTime(endFrequency, startTime + duration);
   }
   volume.gain.setValueAtTime(0.0001, startTime);
-  volume.gain.exponentialRampToValueAtTime(0.065, startTime + 0.025);
+  volume.gain.exponentialRampToValueAtTime(0.15, startTime + 0.025);
   volume.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
   oscillator.connect(volume);
   volume.connect(audioContext.destination);
   oscillator.start(startTime);
   oscillator.stop(startTime + duration);
+}
+
+function stopBackgroundMusic() {
+  musicGeneration += 1;
+  window.clearInterval(musicChordTimer);
+  musicChordTimer = null;
+  if (!musicGain || !audioContext) return;
+
+  const now = audioContext.currentTime;
+  musicGain.gain.cancelScheduledValues(now);
+  musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+  musicGain.gain.linearRampToValueAtTime(0.0001, now + 0.8);
+  musicOscillators.forEach((oscillator) => oscillator.stop(now + 0.85));
+  musicOscillators = [];
+  musicGain = null;
+}
+
+function startBackgroundMusic() {
+  if (!soundEnabled || !activeGameId || document.hidden || !window.AudioContext) return;
+  prepareAudio();
+  if (!audioContext) return;
+
+  stopBackgroundMusic();
+  const generation = musicGeneration;
+  const beginMusic = () => {
+    if (
+      generation !== musicGeneration
+      || !soundEnabled
+      || !activeGameId
+      || document.hidden
+      || !audioContext
+      || audioContext.state !== 'running'
+    ) return;
+
+    const filter = audioContext.createBiquadFilter();
+    musicGain = audioContext.createGain();
+    filter.type = 'lowpass';
+    filter.frequency.value = 1000;
+    musicGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+    musicGain.gain.linearRampToValueAtTime(0.07, audioContext.currentTime + 2);
+    musicGain.connect(filter);
+    filter.connect(audioContext.destination);
+
+    const voiceGains = [0.4, 0.34, 0.28, 0.22];
+    musicOscillators = voiceGains.map((voiceGain, index) => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = ambientChords[0][index];
+      gain.gain.value = voiceGain;
+      oscillator.connect(gain);
+      gain.connect(musicGain);
+      oscillator.start();
+      return oscillator;
+    });
+
+    let chordIndex = 0;
+    musicChordTimer = window.setInterval(() => {
+      if (!audioContext || !musicGain) return;
+      chordIndex = (chordIndex + 1) % ambientChords.length;
+      const changeTime = audioContext.currentTime;
+      musicOscillators.forEach((oscillator, index) => {
+        oscillator.frequency.setTargetAtTime(ambientChords[chordIndex][index], changeTime, 1.4);
+      });
+    }, 8000);
+  };
+
+  if (audioContext.state === 'running') {
+    beginMusic();
+  } else {
+    void audioContext.resume().then(beginMusic).catch((error) => {
+      console.warn('Could not start background music.', error);
+    });
+  }
 }
 
 function playSoundEffect(effect) {
@@ -107,6 +192,11 @@ soundToggle.addEventListener('click', () => {
     console.warn('Could not save the sound preference.', error);
   }
   if (soundEnabled) prepareAudio();
+  if (soundEnabled && activeGameId) {
+    startBackgroundMusic();
+  } else {
+    stopBackgroundMusic();
+  }
 });
 
 const slides = [
@@ -242,6 +332,7 @@ async function invokeGame(payload) {
 async function startOnlineGame() {
   if (!supabaseClient || !playerName) return false;
 
+  stopBackgroundMusic();
   const requestId = ++gameRequestId;
   activeGameId = null;
   currentQuestion = null;
@@ -260,6 +351,7 @@ async function startOnlineGame() {
     if (requestId !== gameRequestId) return;
     activeGameId = result.gameId;
     currentQuestion = result.question;
+    startBackgroundMusic();
     showQuestion();
     return true;
   } catch (error) {
@@ -285,6 +377,7 @@ nameForm.addEventListener('submit', async (event) => {
 
   const submitButton = nameForm.querySelector('button[type="submit"]');
   submitButton.disabled = true;
+  prepareAudio();
   playerName = displayName;
   loginStatus.textContent = 'Starting your game...';
   try {
@@ -438,6 +531,8 @@ async function checkAnswer(answer) {
 
     prompt.classList.remove('answer-wrong');
     if (result.completed) {
+      playSoundEffect('complete');
+      stopBackgroundMusic();
       activeGameId = null;
       currentQuestion = null;
       question.textContent = "Brilliant! You've solved all the riddles.";
@@ -445,7 +540,6 @@ async function checkAnswer(answer) {
       restartButton.hidden = false;
       prompt.textContent = `${playerName}, you earned ${result.score} points!`;
       prompt.classList.add('answer-correct');
-      playSoundEffect('complete');
       return;
     }
 
@@ -467,18 +561,31 @@ async function checkAnswer(answer) {
   }
 }
 
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopBackgroundMusic();
+  } else if (activeGameId) {
+    startBackgroundMusic();
+  }
+});
+
 restartButton.addEventListener('click', () => {
+  prepareAudio();
   void startOnlineGame();
 });
 
 if (difficultySelect) {
   difficultySelect.addEventListener('change', () => {
     selectedDifficulty = difficultySelect.value;
-    if (playerName) void startOnlineGame();
+    if (playerName) {
+      prepareAudio();
+      void startOnlineGame();
+    }
   });
 }
 
 logoutButton.addEventListener('click', () => {
+  stopBackgroundMusic();
   gameRequestId += 1;
   playerName = '';
   activeGameId = null;
