@@ -4,7 +4,7 @@ The app uses Supabase Auth for email magic links, a public read-only leaderboard
 
 ## 1. Create the Supabase project
 
-The Supabase project `jyeukrrfhesgjqilymwm` has been created and connected in `supabase-config.js`. Its project URL and publishable key are browser-safe. Never put the `service_role` key in a website file or share it publicly.
+The Supabase project `jyeukrrfhesgjqilymwm` is connected in `supabase-config.js`. Its project URL and publishable key are browser-safe. Never put the `service_role` key in a website file or share it publicly.
 
 ## 2. Create the database tables and policies
 
@@ -16,7 +16,7 @@ The `riddle-game` Edge Function has been deployed from the Supabase dashboard. F
 
 ```text
 supabase login
-supabase link --project-ref YOUR_PROJECT_REF
+supabase link --project-ref jyeukrrfhesgjqilymwm
 supabase functions deploy riddle-game
 ```
 
@@ -26,8 +26,8 @@ The function uses Supabase's `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` serv
 
 ## 4. Configure email sign-in and site URLs
 
-Email sign-in and new-user registration are enabled. Email confirmation is on. **Authentication → URL Configuration** currently allows `http://localhost:3000/**` for local testing, with `http://localhost:3000` as the site URL. After hosting the site, change the site URL to its HTTPS address and add that exact host/path to allowed redirect URLs. Public signups require a custom SMTP provider for reliable email delivery; configure one under **Project Settings → Auth → SMTP Settings** before inviting general users.
+Email sign-in and new-user registration are enabled. Email confirmation is on. **Authentication → URL Configuration** uses `https://teddyedwin.github.io/just-ask-riddle-game/` as the Site URL and allows both that Pages path (`https://teddyedwin.github.io/just-ask-riddle-game/**`) and `http://localhost:3000/**` for local testing. Public signups require a custom SMTP provider for reliable email delivery; configure one under **Project Settings → Auth → SMTP Settings** before inviting general users.
 
 ## 5. Publish and test
 
-The database's public score read endpoint was verified, and the deployed game function correctly rejects requests without a signed-in user. Publish the static site over HTTPS, configure the site's redirect URL, and configure SMTP before testing signup. Then test opening a magic link, completing a game, changing a display name, and viewing the leaderboard in a separate browser. Only scores inserted by the deployed game function are visible; old local scores remain in the browser and are not shared.
+The site is published at [https://teddyedwin.github.io/just-ask-riddle-game/](https://teddyedwin.github.io/just-ask-riddle-game/). The database's public score read endpoint was verified, and the deployed game function correctly rejects requests without a signed-in user. Configure custom SMTP before inviting general users. Then test opening a magic link, completing a game, changing a display name, and viewing the leaderboard in a separate browser. Only scores inserted by the deployed game function are visible; old local scores remain in the browser and are not shared.
