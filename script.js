@@ -303,7 +303,7 @@ profileForm.addEventListener('submit', (event) => {
     return;
   }
   if (updatedYear && (Number(updatedYear) < 1900 || Number(updatedYear) > 2100)) {
-    profileStatus.textContent = 'Enter a year between 1900 and 2100.';
+    profileStatus.textContent = 'Enter a year.';
     profileYearInput.focus();
     return;
   }
@@ -607,7 +607,7 @@ logoutButton.addEventListener('click', () => {
     document.createTextNode(' A little question game')
   );
   headerNote.hidden = false;
-  loginStatus.textContent = 'No account needed. Names and scores are public and can’t be verified.';
+  loginStatus.textContent = '';
   nameInput.value = '';
   nameInput.focus();
 });
