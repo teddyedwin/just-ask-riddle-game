@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10121e">
+  <meta name="description" content="Solve each riddle to unlock the next one.">
+  <title>Riddle Challenge — One More Question</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-shell">
+    <header class="site-header">
+      <div class="header-brand">
+        <a class="wordmark" href="#howToPlay" aria-label="How to play">
+          <span class="wordmark-icon" aria-hidden="true">?</span>
+          <span>JUST<span class="wordmark-accent">ASK</span></span>
+        </a>
+      </div>
+      <div class="header-actions">
+        <span class="header-note" id="headerNote"><span class="status-dot" aria-hidden="true"></span> A little question game</span>
+        <button class="profile-avatar" id="profileAvatar" type="button" aria-label="Open profile menu" aria-haspopup="dialog" aria-expanded="false" aria-controls="profileDrawer">?</button>
+      </div>
+    </header>
+
+    <div class="profile-backdrop" id="profileBackdrop" hidden></div>
+    <aside class="profile-drawer" id="profileDrawer" role="dialog" aria-modal="true" aria-labelledby="profileDrawerTitle" aria-hidden="true" hidden>
+      <button class="profile-drawer-close" id="closeProfileDrawer" type="button" aria-label="Close profile menu">×</button>
+      <p class="question-label">PLAYER MENU</p>
+      <h2 id="profileDrawerTitle">Your profile</h2>
+      <p class="profile-drawer-name" id="profileDrawerName"></p>
+      <nav class="profile-drawer-nav" aria-label="Profile menu">
+        <a href="leaderboard.html" id="drawerLeaderboardLink">Leaderboard</a>
+      </nav>
+      <section class="profile-settings" id="profileSettings" aria-labelledby="profileSettingsTitle">
+        <h3 id="profileSettingsTitle">Edit profile</h3>
+        <form id="profileForm">
+          <label class="answer-label" for="profileNameInput">NAME</label>
+          <input class="profile-input" id="profileNameInput" name="profileName" type="text" maxlength="40" autocomplete="name" required>
+          <label class="answer-label" for="profileYearInput">YEAR</label>
+          <input class="profile-input" id="profileYearInput" name="profileYear" type="number" min="1900" max="2100" placeholder="e.g. 2000">
+          <button class="answer-button answer-yes profile-save-button" type="submit">Save profile</button>
+          <p class="profile-status" id="profileStatus" aria-live="polite"></p>
+        </form>
+      </section>
+      <p class="profile-guest-note" id="profileGuestNote" hidden>Log in to open profile settings.</p>
+      <button class="logout-button profile-logout-button" id="logoutButton" type="button" hidden>Log out</button>
+    </aside>
+
+    <section class="photo-carousel" aria-label="Friends having fun together">
+      <figure class="photo-slide">
+        <img id="slideImage" src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/40/Chess_game_Staunton_No._6_perfil_view_8.jpg/1280px-Chess_game_Staunton_No._6_perfil_view_8.jpg" alt="Chess pieces set up on a board">
+        <div class="slide-indicators" id="slideIndicators" aria-label="Choose a photo">
+          <button class="slide-indicator is-active" type="button" aria-label="Show photo 1" aria-current="true"></button>
+          <button class="slide-indicator" type="button" aria-label="Show photo 2"></button>
+          <button class="slide-indicator" type="button" aria-label="Show photo 3"></button>
+          <button class="slide-indicator" type="button" aria-label="Show photo 4"></button>
+        </div>
+      </figure>
+      <details class="photo-credits">
+        <summary>Photo credits</summary>
+        <ul>
+          <li><a href="https://commons.wikimedia.org/wiki/File:Chess_game_Staunton_No._6_perfil_view_8.jpg" target="_blank" rel="noopener noreferrer">Chess set — Wilfredor (CC0)</a></li>
+          <li><a href="https://commons.wikimedia.org/wiki/File:Chess_board_with_pieces.jpg" target="_blank" rel="noopener noreferrer">Chess board — Aaaatu (CC BY-SA 4.0)</a></li>
+          <li><a href="https://commons.wikimedia.org/wiki/File:Dartboard_with_darts.jpg" target="_blank" rel="noopener noreferrer">Dartboard — Santeri Viinamäki (CC BY-SA 4.0)</a></li>
+          <li><a href="https://commons.wikimedia.org/wiki/File:Darts_in_a_dartboard.jpg" target="_blank" rel="noopener noreferrer">Darts — PeterPan23 (public domain)</a></li>
+        </ul>
+      </details>
+    </section>
+
+    <div class="how-to-play-backdrop" id="howToPlayBackdrop" hidden></div>
+    <aside class="how-to-play" id="howToPlay" aria-labelledby="howToPlayTitle" aria-hidden="true" hidden>
+      <button class="how-to-play-close" id="closeHowToPlay" type="button" aria-label="Close instructions">×</button>
+      <p class="question-label">HOW TO PLAY</p>
+      <h2 id="howToPlayTitle">Solve the riddles.</h2>
+      <p>Choose the right answer to move on. Pick the wrong one? Try again. Finish all the riddles to win.</p>
+    </aside>
+
+    <section class="question-panel login-panel" id="loginPanel" aria-labelledby="loginTitle">
+      <div class="panel-topline">
+        <span class="eyebrow"><span class="sparkle" aria-hidden="true">✳</span> READY FOR A CHALLENGE?</span>
+     </div>
+      <div class="question-content">
+        <p class="question-label">WELCOME TO THE RIDDLE CHALLENGE</p>
+        <h1 id="loginTitle">SIGN IN TO PLAY</h1>
+      </div>
+      <form class="name-form" id="nameForm">
+          <label class="answer-label" for="nameInput">PUBLIC DISPLAY NAME</label>
+          <div class="name-controls name-only-control">
+            <input id="nameInput" name="name" type="text" placeholder="Enter your name..." autocomplete="given-name" maxlength="40" required>
+          </div>
+          <label class="answer-label" for="emailInput">EMAIL</label>
+          <input class="auth-input" id="emailInput" name="email" type="email" placeholder="you@example.com" autocomplete="email" maxlength="254" required>
+          <button class="answer-button answer-yes login-submit" type="submit">
+            <span>Send magic link</span><span class="button-arrow" aria-hidden="true">↗</span>
+          </button>
+          <p class="login-status" id="loginStatus" aria-live="polite">We'll email you a secure sign-in link. Your display name and scores will be public.</p>
+      </form>
+    </section>
+
+    <section class="question-panel" id="quizPanel" aria-labelledby="question" hidden>
+      <div class="panel-topline">
+        <span class="eyebrow"><span class="sparkle" aria-hidden="true">✳</span> GO WITH YOUR GUT</span>
+        <span class="answer-note">Get it right to move on.</span>
+      </div>
+
+      <div class="question-content" aria-live="polite" aria-atomic="true">
+        <p class="question-label">HERE'S YOUR QUESTION</p>
+        <h1 id="question">What is always coming but never arrives?</h1>
+      </div>
+
+      <div class="difficulty-row quiz-toolbar">
+        <label class="answer-label" for="difficultySelect">DIFFICULTY</label>
+        <select id="difficultySelect" name="difficulty" class="difficulty-select" aria-label="Choose difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+
+      <div class="answer-options" id="answerOptions" aria-label="Answer choices"></div>
+      <button class="answer-button answer-yes restart-button" id="restartButton" type="button" hidden>
+        <span>Play again</span><span class="button-arrow" aria-hidden="true">↗</span>
+      </button>
+      <a class="leaderboard-link quiz-leaderboard-link" href="leaderboard.html">View leaderboard</a>
+
+      <div class="panel-footer">
+        <span class="footer-mark" aria-hidden="true">✳</span>
+        <p id="prompt" aria-live="polite">Solve the riddle to unlock the next question.</p>
+        <span class="footer-mark" aria-hidden="true">✳</span>
+      </div>
+    </section>
+
+    <footer class="page-footer" aria-label="Made by Baffs">
+      <div class="footer-marquee">
+        <div class="footer-marquee-track">
+          <span>MADE BY BAFFS <span aria-hidden="true">✳</span></span>
+          <span aria-hidden="true">MADE BY BAFFS <span>✳</span></span>
+        </div>
+      </div>
+    </footer>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-client.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

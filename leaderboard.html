@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10121e">
+  <meta name="description" content="See the shared top scores from completed riddle games.">
+  <title>Leaderboard — Just Ask</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-shell">
+    <header class="site-header">
+      <a class="wordmark" href="index.html" aria-label="Back to Just Ask">
+        <span class="wordmark-icon" aria-hidden="true">?</span>
+        <span>JUST<span class="wordmark-accent">ASK</span></span>
+      </a>
+      <div class="header-actions">
+        <a class="leaderboard-link" href="index.html">Back</a>
+        <span class="header-note"><span class="status-dot" aria-hidden="true"></span> Shared leaderboard</span>
+      </div>
+    </header>
+
+    <section class="leaderboard-panel" aria-labelledby="leaderboardTitle">
+      <p class="question-label">RIDDLE CHALLENGE</p>
+      <h1 id="leaderboardTitle">LEADERBOARD</h1>
+      <p class="leaderboard-description">Finish a set of riddles to earn points. Harder levels award more points.</p>
+      <p class="leaderboard-status" id="leaderboardStatus" aria-live="polite"></p>
+      <div class="leaderboard-table-wrap">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th scope="col">Rank</th>
+              <th scope="col">Player</th>
+              <th scope="col">Level</th>
+              <th scope="col">Score</th>
+              <th scope="col">Completed</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardEntries"></tbody>
+        </table>
+      </div>
+      <a class="answer-button answer-yes leaderboard-play-button" href="index.html">
+        <span>Play a game</span><span class="button-arrow" aria-hidden="true">↗</span>
+      </a>
+      <p class="leaderboard-note">Scores and display names are visible to everyone.</p>
+    </section>
+
+    <footer class="page-footer" aria-label="Made by Baffs">
+      <div class="footer-marquee">
+        <div class="footer-marquee-track">
+          <span>MADE BY BAFFS <span aria-hidden="true">✳</span></span>
+          <span aria-hidden="true">MADE BY BAFFS <span>✳</span></span>
+        </div>
+      </div>
+    </footer>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-client.js"></script>
+  <script src="leaderboard.js"></script>
+</body>
+</html>
