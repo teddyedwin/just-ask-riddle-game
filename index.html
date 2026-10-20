@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#10121e">
   <meta name="description" content="Solve each riddle to unlock the next one.">
   <title>Riddle Challenge — One More Question</title>
-  <link rel="stylesheet" href="style.css?v=mobile-layout-20261020">
+  <link rel="stylesheet" href="style.css?v=username-accounts-20261020">
 </head>
 <body>
   <main class="page-shell">
@@ -19,7 +19,7 @@
       </div>
       <div class="header-actions">
         <span class="header-note" id="headerNote"><span class="status-dot" aria-hidden="true"></span> A little question game</span>
-        <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="true">Sound on</button>
+        <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="true">Sound effects on</button>
         <button class="profile-avatar" id="profileAvatar" type="button" aria-label="Open profile menu" aria-haspopup="dialog" aria-expanded="false" aria-controls="profileDrawer">?</button>
       </div>
     </header>
@@ -28,24 +28,14 @@
     <aside class="profile-drawer" id="profileDrawer" role="dialog" aria-modal="true" aria-labelledby="profileDrawerTitle" aria-hidden="true" hidden>
       <button class="profile-drawer-close" id="closeProfileDrawer" type="button" aria-label="Close profile menu">×</button>
       <p class="question-label">PLAYER MENU</p>
-      <h2 id="profileDrawerTitle">Your profile</h2>
+      <h2 id="profileDrawerTitle">Your account</h2>
       <p class="profile-drawer-name" id="profileDrawerName"></p>
       <nav class="profile-drawer-nav" aria-label="Profile menu">
         <a href="leaderboard.html" id="drawerLeaderboardLink">Leaderboard</a>
       </nav>
-      <section class="profile-settings" id="profileSettings" aria-labelledby="profileSettingsTitle">
-        <h3 id="profileSettingsTitle">Edit profile</h3>
-        <form id="profileForm">
-          <label class="answer-label" for="profileNameInput">GUEST NAME</label>
-          <input class="profile-input" id="profileNameInput" name="profileName" type="text" maxlength="40" autocomplete="name" required>
-          <label class="answer-label" for="profileYearInput">YEAR</label>
-          <input class="profile-input" id="profileYearInput" name="profileYear" type="number" min="1900" max="2100" placeholder="e.g. 2000">
-          <button class="answer-button answer-yes profile-save-button" type="submit">Save profile</button>
-          <p class="profile-status" id="profileStatus" aria-live="polite"></p>
-        </form>
-      </section>
-      <p class="profile-guest-note" id="profileGuestNote" hidden>Enter a display name to play.</p>
-      <button class="logout-button profile-logout-button" id="logoutButton" type="button" hidden>Change player</button>
+      <p class="profile-guest-note" id="profileGuestNote">Log in or create an account to play.</p>
+      <p class="profile-status" id="profileStatus" aria-live="polite"></p>
+      <button class="logout-button profile-logout-button" id="logoutButton" type="button" hidden>Log out</button>
     </aside>
 
     <section class="photo-carousel" aria-label="Friends having fun together">
@@ -83,16 +73,22 @@
      </div>
       <div class="question-content">
         <p class="question-label">WELCOME TO THE RIDDLE CHALLENGE</p>
-        <h1 id="loginTitle">CHOOSE A NAME TO PLAY</h1>
+        <h1 id="loginTitle">LOG IN TO PLAY</h1>
       </div>
       <form class="name-form" id="nameForm">
-          <label class="answer-label" for="nameInput">PUBLIC DISPLAY NAME</label>
+          <label class="answer-label" for="nameInput">USERNAME</label>
           <div class="name-controls name-only-control">
-            <input id="nameInput" name="name" type="text" placeholder="Enter your name..." autocomplete="given-name" maxlength="40" required>
+            <input id="nameInput" name="username" type="text" placeholder="3–20 letters, numbers, or _" autocomplete="username" minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" autocapitalize="none" spellcheck="false" required>
+          </div>
+          <label class="answer-label" for="passwordInput">PASSWORD</label>
+          <div class="name-controls name-only-control">
+            <input id="passwordInput" name="password" type="password" placeholder="At least 8 characters" autocomplete="current-password" minlength="8" required>
           </div>
           <button class="answer-button answer-yes login-submit" type="submit">
-            <span>Play as guest</span><span class="button-arrow" aria-hidden="true">↗</span>
+            <span id="authSubmitLabel">Log in</span><span class="button-arrow" aria-hidden="true">↗</span>
           </button>
+          <button class="auth-mode-toggle" id="authModeToggle" type="button">New here? Create an account</button>
+          <p class="auth-recovery-note" id="authRecoveryNote" hidden>No email is collected, so forgotten passwords cannot be recovered. Keep yours safe.</p>
           <p class="login-status" id="loginStatus" aria-live="polite"></p>
       </form>
     </section>

@@ -4,6 +4,11 @@ const answerOptions = document.getElementById('answerOptions');
 const restartButton = document.getElementById('restartButton');
 const nameForm = document.getElementById('nameForm');
 const nameInput = document.getElementById('nameInput');
+const passwordInput = document.getElementById('passwordInput');
+const authModeToggle = document.getElementById('authModeToggle');
+const authSubmitLabel = document.getElementById('authSubmitLabel');
+const loginTitle = document.getElementById('loginTitle');
+const authRecoveryNote = document.getElementById('authRecoveryNote');
 const loginStatus = document.getElementById('loginStatus');
 const loginPanel = document.getElementById('loginPanel');
 const quizPanel = document.getElementById('quizPanel');
@@ -15,9 +20,6 @@ const profileBackdrop = document.getElementById('profileBackdrop');
 const closeProfileDrawer = document.getElementById('closeProfileDrawer');
 const drawerLeaderboardLink = document.getElementById('drawerLeaderboardLink');
 const profileDrawerName = document.getElementById('profileDrawerName');
-const profileForm = document.getElementById('profileForm');
-const profileNameInput = document.getElementById('profileNameInput');
-const profileYearInput = document.getElementById('profileYearInput');
 const profileStatus = document.getElementById('profileStatus');
 const profileGuestNote = document.getElementById('profileGuestNote');
 const howToPlay = document.getElementById('howToPlay');
@@ -34,20 +36,10 @@ let playerName = '';
 let activeGameId = null;
 let currentQuestion = null;
 let gameRequestId = 0;
+let authMode = 'login';
 const soundPreferenceKey = 'justAskSoundEnabled';
 let soundEnabled = true;
 let audioContext = null;
-let musicGain = null;
-let musicOscillators = [];
-let musicChordTimer = null;
-let musicGeneration = 0;
-
-const ambientChords = [
-  [130.81, 164.81, 196, 246.94],
-  [110, 130.81, 164.81, 196],
-  [87.31, 110, 130.81, 164.81],
-  [98, 123.47, 146.83, 196],
-];
 
 try {
   soundEnabled = localStorage.getItem(soundPreferenceKey) !== 'false';
@@ -56,9 +48,9 @@ try {
 }
 
 function updateSoundToggle() {
-  soundToggle.textContent = soundEnabled ? 'Audio on' : 'Audio off';
+  soundToggle.textContent = soundEnabled ? 'Sound effects on' : 'Sound effects off';
   soundToggle.setAttribute('aria-pressed', String(soundEnabled));
-  soundToggle.setAttribute('aria-label', `Sound effects and music ${soundEnabled ? 'on' : 'off'}`);
+  soundToggle.setAttribute('aria-label', `Sound effects ${soundEnabled ? 'on' : 'off'}`);
 }
 
 function prepareAudio() {
@@ -93,80 +85,6 @@ function playTone(frequency, startTime, duration, endFrequency = frequency) {
   oscillator.stop(startTime + duration);
 }
 
-function stopBackgroundMusic() {
-  musicGeneration += 1;
-  window.clearInterval(musicChordTimer);
-  musicChordTimer = null;
-  if (!musicGain || !audioContext) return;
-
-  const now = audioContext.currentTime;
-  musicGain.gain.cancelScheduledValues(now);
-  musicGain.gain.setValueAtTime(musicGain.gain.value, now);
-  musicGain.gain.linearRampToValueAtTime(0.0001, now + 0.8);
-  musicOscillators.forEach((oscillator) => oscillator.stop(now + 0.85));
-  musicOscillators = [];
-  musicGain = null;
-}
-
-function startBackgroundMusic() {
-  if (!soundEnabled || !activeGameId || document.hidden || !window.AudioContext) return;
-  prepareAudio();
-  if (!audioContext) return;
-
-  stopBackgroundMusic();
-  const generation = musicGeneration;
-  const beginMusic = () => {
-    if (
-      generation !== musicGeneration
-      || !soundEnabled
-      || !activeGameId
-      || document.hidden
-      || !audioContext
-      || audioContext.state !== 'running'
-    ) return;
-
-    const filter = audioContext.createBiquadFilter();
-    musicGain = audioContext.createGain();
-    filter.type = 'lowpass';
-    filter.frequency.value = 1000;
-    musicGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-    musicGain.gain.linearRampToValueAtTime(0.07, audioContext.currentTime + 2);
-    musicGain.connect(filter);
-    filter.connect(audioContext.destination);
-
-    const voiceGains = [0.4, 0.34, 0.28, 0.22];
-    musicOscillators = voiceGains.map((voiceGain, index) => {
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.value = ambientChords[0][index];
-      gain.gain.value = voiceGain;
-      oscillator.connect(gain);
-      gain.connect(musicGain);
-      oscillator.start();
-      return oscillator;
-    });
-
-    let chordIndex = 0;
-    musicChordTimer = window.setInterval(() => {
-      if (!audioContext || !musicGain) return;
-      chordIndex = (chordIndex + 1) % ambientChords.length;
-      const changeTime = audioContext.currentTime;
-      musicOscillators.forEach((oscillator, index) => {
-        oscillator.frequency.setTargetAtTime(ambientChords[chordIndex][index], changeTime, 1.4);
-      });
-    }, 8000);
-  };
-
-  if (audioContext.state === 'running') {
-    beginMusic();
-  } else {
-    void audioContext.resume().then(beginMusic).catch((error) => {
-      console.warn('Could not start background music.', error);
-    });
-  }
-}
-
 function playSoundEffect(effect) {
   if (!soundEnabled || !audioContext || audioContext.state !== 'running') return;
   const now = audioContext.currentTime;
@@ -192,11 +110,6 @@ soundToggle.addEventListener('click', () => {
     console.warn('Could not save the sound preference.', error);
   }
   if (soundEnabled) prepareAudio();
-  if (soundEnabled && activeGameId) {
-    startBackgroundMusic();
-  } else {
-    stopBackgroundMusic();
-  }
 });
 
 const slides = [
@@ -220,7 +133,6 @@ const slides = [
 
 let slideIndex = 0;
 let selectedDifficulty = 'medium';
-const playerYearStorageKey = 'justAskPlayerYear';
 
 function setHeaderGreeting() {
   const initials = playerName
@@ -232,8 +144,6 @@ function setHeaderGreeting() {
   profileAvatar.textContent = initials || '?';
   profileAvatar.setAttribute('aria-label', `Open ${playerName}'s profile menu`);
   profileDrawerName.textContent = playerName;
-  profileNameInput.value = playerName;
-  profileYearInput.value = localStorage.getItem(playerYearStorageKey) || '';
   headerNote.replaceChildren(
     headerNote.querySelector('.status-dot'),
     document.createTextNode(` Good luck, ${playerName}!`)
@@ -241,16 +151,11 @@ function setHeaderGreeting() {
 }
 
 function openProfileDrawer() {
-  const isLoggedIn = !quizPanel.hidden;
-  profileForm.hidden = !isLoggedIn;
+  const isLoggedIn = Boolean(playerName);
   profileGuestNote.hidden = isLoggedIn;
   drawerLeaderboardLink.hidden = !isLoggedIn;
   logoutButton.hidden = !isLoggedIn;
-  if (isLoggedIn) {
-    profileNameInput.value = playerName;
-    profileYearInput.value = localStorage.getItem(playerYearStorageKey) || '';
-    profileStatus.textContent = '';
-  }
+  profileStatus.textContent = '';
   profileDrawer.hidden = false;
   profileBackdrop.hidden = false;
   profileDrawer.setAttribute('aria-hidden', 'false');
@@ -293,46 +198,25 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-profileForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const updatedName = profileNameInput.value.trim();
-  const updatedYear = profileYearInput.value.trim();
-  if (!updatedName) {
-    profileStatus.textContent = 'Please enter a name.';
-    profileNameInput.focus();
-    return;
-  }
-  if (updatedYear && (Number(updatedYear) < 1900 || Number(updatedYear) > 2100)) {
-    profileStatus.textContent = 'Enter a year.';
-    profileYearInput.focus();
-    return;
-  }
-
-  try {
-    if (updatedYear) {
-      localStorage.setItem(playerYearStorageKey, updatedYear);
-    } else {
-      localStorage.removeItem(playerYearStorageKey);
-    }
-    playerName = updatedName;
-    setHeaderGreeting();
-    profileStatus.textContent = 'Name saved for future games. Current and past scores keep their original name.';
-  } catch (error) {
-    console.error('Could not save profile changes.', error);
-    profileStatus.textContent = 'Profile could not be saved. Please try again.';
-  }
-});
-
 async function invokeGame(payload) {
   const { data, error } = await supabaseClient.functions.invoke('riddle-game', { body: payload });
-  if (error) throw error;
+  if (error) {
+    let message = error.message;
+    if (error.context instanceof Response) {
+      const body = await error.context.clone().json();
+      if (typeof body?.error === 'string') message = body.error;
+    }
+    if (/display name/i.test(message)) {
+      throw new Error('The deployed game service is out of date. Deploy the latest riddle-game function from this project, then try again.');
+    }
+    throw new Error(message);
+  }
   return data;
 }
 
 async function startOnlineGame() {
   if (!supabaseClient || !playerName) return false;
 
-  stopBackgroundMusic();
   const requestId = ++gameRequestId;
   activeGameId = null;
   currentQuestion = null;
@@ -346,61 +230,160 @@ async function startOnlineGame() {
     const result = await invokeGame({
       action: 'start',
       difficulty: selectedDifficulty,
-      playerName,
     });
     if (requestId !== gameRequestId) return;
     activeGameId = result.gameId;
     currentQuestion = result.question;
-    startBackgroundMusic();
     showQuestion();
     return true;
   } catch (error) {
     if (requestId !== gameRequestId) return false;
-    console.error('Could not start the guest game.', error);
-    prompt.textContent = 'Could not start the game. Please try again.';
+    console.error('Could not start the player game.', error);
+    prompt.textContent = error instanceof Error
+      ? `Could not start the game: ${error.message}`
+      : 'Could not start the game. Please try again.';
     prompt.classList.add('answer-wrong');
     return false;
   }
 }
 
+function setAuthMode(mode) {
+  authMode = mode;
+  const creatingAccount = mode === 'signup';
+  loginTitle.textContent = creatingAccount ? 'CREATE YOUR ACCOUNT' : 'LOG IN TO PLAY';
+  authSubmitLabel.textContent = creatingAccount ? 'Create account' : 'Log in';
+  authModeToggle.textContent = creatingAccount
+    ? 'Already have an account? Log in'
+    : 'New here? Create an account';
+  authRecoveryNote.hidden = !creatingAccount;
+  passwordInput.autocomplete = creatingAccount ? 'new-password' : 'current-password';
+  loginStatus.textContent = '';
+}
+
+function accountLookupErrorMessage(error) {
+  if (error?.code === 'PGRST205' || error?.code === '42P01') {
+    return 'You are signed in, but the player database is not set up yet. Run supabase-setup.sql in the Supabase SQL Editor, then try again.';
+  }
+  if (error?.code === 'PGRST116') {
+    return 'You are signed in, but your player record is missing. Run the updated supabase-setup.sql to repair existing accounts, then try again.';
+  }
+  return 'You are signed in, but your player account could not be loaded. Please try again later.';
+}
+
+async function startPlayerGame(username) {
+  playerName = username;
+  setHeaderGreeting();
+  headerNote.hidden = false;
+  loginPanel.hidden = true;
+  quizPanel.hidden = false;
+  logoutButton.hidden = false;
+  const started = await startOnlineGame();
+  if (started) return true;
+
+  playerName = '';
+  headerNote.replaceChildren(
+    headerNote.querySelector('.status-dot'),
+    document.createTextNode(' A little question game')
+  );
+  loginPanel.hidden = false;
+  quizPanel.hidden = true;
+  logoutButton.hidden = true;
+  loginStatus.textContent = 'Your account is signed in, but the game service could not start. Please try logging in again later.';
+  return false;
+}
+
+authModeToggle.addEventListener('click', () => {
+  setAuthMode(authMode === 'login' ? 'signup' : 'login');
+});
+
 nameForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const displayName = nameInput.value.trim().slice(0, 40);
-  if (!displayName) {
+  const username = nameInput.value.trim().toLowerCase();
+  const password = passwordInput.value;
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+    loginStatus.textContent = 'Use a username of 3–20 letters, numbers, or underscores.';
     nameInput.focus();
     return;
   }
+  if (password.length < 8) {
+    loginStatus.textContent = 'Your password must be at least 8 characters.';
+    passwordInput.focus();
+    return;
+  }
   if (!supabaseClient) {
-    loginStatus.textContent = 'The shared game service is not available. Please try again later.';
+    loginStatus.textContent = 'The account service is not available. Please try again later.';
     return;
   }
 
+  nameInput.value = username;
   const submitButton = nameForm.querySelector('button[type="submit"]');
   submitButton.disabled = true;
+  authModeToggle.disabled = true;
   prepareAudio();
-  playerName = displayName;
-  loginStatus.textContent = 'Starting your game...';
+  loginStatus.textContent = authMode === 'signup' ? 'Creating your account...' : 'Logging in...';
+  let sessionEstablished = false;
   try {
-    setHeaderGreeting();
-    headerNote.hidden = false;
-    loginPanel.hidden = true;
-    quizPanel.hidden = false;
-    logoutButton.hidden = false;
-    const started = await startOnlineGame();
-    if (!started) {
-      loginPanel.hidden = false;
-      quizPanel.hidden = true;
-      logoutButton.hidden = true;
-      loginStatus.textContent = 'Could not connect to the shared game service. Please try again later.';
-      nameInput.focus();
+    const syntheticEmail = `${username}@players.justask.invalid`;
+    const authResult = authMode === 'signup'
+      ? await supabaseClient.auth.signUp({
+        email: syntheticEmail,
+        password,
+        options: { data: { username } },
+      })
+      : await supabaseClient.auth.signInWithPassword({
+        email: syntheticEmail,
+        password,
+      });
+    if (authResult.error) throw authResult.error;
+    if (!authResult.data.session) {
+      loginStatus.textContent = 'Username-only accounts require email confirmation to be disabled in the Supabase Auth settings. No email address is collected.';
+      return;
     }
+    sessionEstablished = true;
+
+    const { data: account, error: accountError } = await supabaseClient
+      .from('usernames')
+      .select('username')
+      .eq('user_id', authResult.data.session.user.id)
+      .single();
+    if (accountError) throw accountError;
+
+    passwordInput.value = '';
+    await startPlayerGame(account.username);
   } catch (error) {
-    console.error('Could not start a guest game.', error);
-    loginStatus.textContent = 'Could not start the game. Please try again.';
+    console.error(`Could not ${authMode === 'signup' ? 'create the player account' : 'log in the player'}.`, error);
+    loginStatus.textContent = sessionEstablished
+      ? accountLookupErrorMessage(error)
+      : authMode === 'signup'
+        ? 'Could not create the account. The username may already be taken; please try another.'
+        : 'Username or password is incorrect.';
   } finally {
     submitButton.disabled = false;
+    authModeToggle.disabled = false;
   }
 });
+
+async function restorePlayerSession() {
+  if (!supabaseClient) return;
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+    if (!data.session) return;
+
+    const { data: account, error: accountError } = await supabaseClient
+      .from('usernames')
+      .select('username')
+      .eq('user_id', data.session.user.id)
+      .single();
+    if (accountError) throw accountError;
+    await startPlayerGame(account.username);
+  } catch (error) {
+    console.error('Could not restore the player session.', error);
+    loginStatus.textContent = accountLookupErrorMessage(error);
+  }
+}
+
+void restorePlayerSession();
 
 function showSlide(index) {
   slideIndex = (index + slides.length) % slides.length;
@@ -532,7 +515,6 @@ async function checkAnswer(answer) {
     prompt.classList.remove('answer-wrong');
     if (result.completed) {
       playSoundEffect('complete');
-      stopBackgroundMusic();
       activeGameId = null;
       currentQuestion = null;
       question.textContent = "Brilliant! You've solved all the riddles.";
@@ -561,13 +543,6 @@ async function checkAnswer(answer) {
   }
 }
 
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    stopBackgroundMusic();
-  } else if (activeGameId) {
-    startBackgroundMusic();
-  }
-});
 
 restartButton.addEventListener('click', () => {
   prepareAudio();
@@ -584,16 +559,24 @@ if (difficultySelect) {
   });
 }
 
-logoutButton.addEventListener('click', () => {
-  stopBackgroundMusic();
+logoutButton.addEventListener('click', async () => {
+  logoutButton.disabled = true;
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+  } catch (error) {
+    console.error('Could not log out the player.', error);
+    profileStatus.textContent = 'Could not log out. Please try again.';
+    logoutButton.disabled = false;
+    return;
+  }
+
   gameRequestId += 1;
   playerName = '';
   activeGameId = null;
   currentQuestion = null;
   profileStatus.textContent = '';
   profileDrawerName.textContent = '';
-  profileNameInput.value = '';
-  profileYearInput.value = '';
   dismissProfileDrawer();
   profileAvatar.textContent = '?';
   profileAvatar.setAttribute('aria-label', 'Open profile menu');
@@ -609,6 +592,9 @@ logoutButton.addEventListener('click', () => {
   headerNote.hidden = false;
   loginStatus.textContent = '';
   nameInput.value = '';
+  passwordInput.value = '';
+  setAuthMode('login');
+  logoutButton.disabled = false;
   nameInput.focus();
 });
 
