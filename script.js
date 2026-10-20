@@ -56,9 +56,9 @@ try {
 }
 
 function updateSoundToggle() {
-  soundToggle.textContent = soundEnabled ? 'Sound on' : 'Sound off';
+  soundToggle.textContent = soundEnabled ? 'Audio on' : 'Audio off';
   soundToggle.setAttribute('aria-pressed', String(soundEnabled));
-  soundToggle.setAttribute('aria-label', `Sound ${soundEnabled ? 'on' : 'off'}`);
+  soundToggle.setAttribute('aria-label', `Sound effects and music ${soundEnabled ? 'on' : 'off'}`);
 }
 
 function prepareAudio() {
